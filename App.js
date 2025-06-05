@@ -10,7 +10,7 @@ function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Estados para a autenticação OAuth2
+  // Estados para a autenticação OAuth2 (ID e Segredo estão de volta no estado do frontend)
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [accessToken, setAccessToken] = useState('');
