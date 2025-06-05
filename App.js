@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'; // useEffect e useCallback estão importados aqui
+import React, { useState, } from 'react'; // useEffect e useCallback estão importados aqui
 
 // Certifique-se de que o Tailwind CSS está carregado no ambiente.
 // Por exemplo, em um arquivo HTML, você pode ter:
