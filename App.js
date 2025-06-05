@@ -286,7 +286,7 @@ function App() {
             )}
             {winner && (
               <div className="bg-white bg-opacity-20 rounded-2xl p-6 shadow-xl animate-fade-in">
-                <h3 className="text-4xl font-extrabold text-white mb-2">� Vencedor(a)! 🎉</h3>
+                <h3 className="text-4xl font-extrabold text-white mb-2">🎉 Vencedor(a)! 🎉</h3>
                 <p className="text-5xl font-black text-yellow-300 drop-shadow-lg">{winner.name}</p>
                 <p className="text-xl text-purple-200 mt-2">Com uma doação de R$ {winner.amount.toFixed(2)}</p>
                 {winner.message && (
@@ -333,4 +333,3 @@ function App() {
 }
 
 export default App;
-�
