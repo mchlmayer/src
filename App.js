@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';Add commentMore actions
-import React, { useState } from 'react'; // 'useEffect' e 'useCallback' removidos
+import React, { useState, useEffect, useCallback } from 'react'; // useEffect e useCallback são necessários aqui
 
 // Certifique-se de que o Tailwind CSS está carregado no ambiente.
 // Por exemplo, em um arquivo HTML, você pode ter:
@@ -64,9 +63,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Este useEffect ainda está aqui, e simula doações iniciais ao carregar.
-    simulateNewDonations();
-  }, [simulateNewDonations]); // Usa useCallback e useEffect aqui
+    // Corrigido o erro de digitação: simulateNewNewDonations() para simulateNewDonations()
+    simulateNewDonations(); 
+  }, [simulateNewDonations]);
 
 
   // Função para obter o Access Token REAL via seu servidor proxy
