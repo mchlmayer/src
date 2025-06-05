@@ -1,9 +1,3 @@
-import React, { useState, useEffect, useCallback } from 'react';
-
-// Certifique-se de que o Tailwind CSS está carregado no ambiente.
-// Por exemplo, em um arquivo HTML, você pode ter:
-// <script src="https://cdn.tailwindcss.com"></script>
-
 function App() {
   const [donations, setDonations] = useState([]); // Armazena as doações únicas
   const [winner, setWinner] = useState(null);
