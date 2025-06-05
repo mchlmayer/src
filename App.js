@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // useEffect e useCallback estão importados aqui
 
 // Certifique-se de que o Tailwind CSS está carregado no ambiente.
 // Por exemplo, em um arquivo HTML, você pode ter:
@@ -63,10 +63,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // A função simulateNewDonations e o useEffect inicial estavam aqui.
-    // Você pode descomentar esta linha se quiser as simulações ao carregar:
-    // simulateNewDonations();
-  }, [simulateNewDonations]);
+    // Este useEffect ainda está aqui, e simula doações iniciais ao carregar.
+    simulateNewDonations();
+  }, [simulateNewDonations]); // Usa useCallback e useEffect aqui
+
 
   // Função para obter o Access Token REAL via seu servidor proxy
   const getAccessToken = async () => {
@@ -251,7 +251,7 @@ function App() {
             />
             <button
               onClick={getAccessToken}
-              disabled={isAuthenticating || !!accessToken} // Desabilita se já autenticando ou se já tem token
+              disabled={isAuthenticating || !!accessToken} // Desabilita se já autentando ou se já tem token
               className="mt-2 w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-xl shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-300"
             >
               {isAuthenticating ? 'Obtendo Token...' : (accessToken ? 'Token Obtido!' : 'Obter Token de Acesso')}
