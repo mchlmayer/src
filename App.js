@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // Apenas useState é necessário aqui
+//import React, { useState } from 'react'; // Apenas useState é necessário aqui
 
 // Certifique-se de que o Tailwind CSS está carregado no ambiente.
 // Por exemplo, em um arquivo HTML, você pode ter:
