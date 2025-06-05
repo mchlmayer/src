@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // 'useEffect' e 'useCallback' removidos
+import React, { useState } from 'react'; // Apenas useState é necessário aqui
 
 // Certifique-se de que o Tailwind CSS está carregado no ambiente.
 // Por exemplo, em um arquivo HTML, você pode ter:
@@ -16,15 +16,11 @@ function App() {
 
   // Estados para o filtro de período
   const [startDate, setStartDate] = useState(''); // Formato 'YYYY-MM-DD'
-  const [endDate, setEndDate] = useState('');   // Formato 'YYYY-MM-DD'
+  const [endDate, setEndDate] = '';   // Formato 'YYYY-MM-DD'
 
   // IMPORTANTE: URL do seu servidor proxy de backend.
   // Esta URL aponta para o seu backend implantado no Render.
   const PROXY_BASE_URL = 'https://livepix-proxy-api.onrender.com/api/livepix'; // Sua URL do Render
-
-  // A função simulateNewDonations e o useEffect inicial foram removidos.
-  // A aplicação agora dependerá exclusivamente da busca da API real.
-
 
   // Função para obter o Access Token REAL via seu servidor proxy
   const getAccessToken = async () => {
@@ -262,7 +258,7 @@ function App() {
           <div>
             <h2 className="text-3xl font-bold mb-4 text-purple-200">Realizar Sorteio</h2>
             <p className="text-purple-300 mb-6">
-              Clique no botão abaixo para sortear um doador. As chances são baseadas no valor da doação (R$10 = 1 número da sorte).
+              Clique no botão abaixo para sortear um doador. As chances são based on the value of the donation (R$10 = 1 lucky number).
             </p>
 
             <button
