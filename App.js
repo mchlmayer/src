@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; 
 
 function App() {
-  const [donations, setDonations] = useState([]);
+  const [donations, setDonations] = useState([]); 
   const [winner, setWinner] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [message, setMessage] = useState('');
@@ -9,53 +9,71 @@ function App() {
   const [accessToken, setAccessToken] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(''); 
+  const [endDate, setEndDate] = useState('');   
 
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [participantsModalContent, setParticipantsModalContent] = useState('');
 
-  // --- PAINEL SECRETO ---
-  const [logoClickCount, setLogoClickCount] = useState(0);
-  const [showSecretPanel, setShowSecretPanel] = useState(false);
-  const [secretWinnerName, setSecretWinnerName] = useState('');
-  const [forcedWinner, setForcedWinner] = useState(null);
-  const logoClickTimer = useRef(null);
+  // NOVO: Estado para controlar qual tela mostrar (main ou admin)
+  const [currentView, setCurrentView] = useState('main');
+  // NOVO: Estado visual para o painel admin saber quem está "escolhido"
+  const [riggedWinnerName, setRiggedWinnerName] = useState('');
 
-  const PROXY_BASE_URL = 'https://livepix-proxy-api.onrender.com/api/livepix';
+  const PROXY_BASE_URL = 'https://livepix-proxy-api.onrender.com/api/livepix'; 
 
-  // Clique 5x rapidamente na logo para abrir o painel secreto
-  const handleLogoClick = () => {
-    const newCount = logoClickCount + 1;
-    setLogoClickCount(newCount);
+  // Verifica a URL ao carregar e quando o hash mudar para alternar as telas
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#admin') {
+        setCurrentView('admin');
+        // Carrega o nome do vencedor forçado, se houver, para mostrar no painel
+        const savedRigged = localStorage.getItem('riggedWinner');
+        if (savedRigged) {
+          setRiggedWinnerName(JSON.parse(savedRigged).name);
+        }
+      } else {
+        setCurrentView('main');
+      }
+    };
 
-    if (logoClickTimer.current) clearTimeout(logoClickTimer.current);
+    // Executa na montagem
+    handleHashChange();
 
-    if (newCount >= 5) {
-      setLogoClickCount(0);
-      setShowSecretPanel(true);
-    } else {
-      logoClickTimer.current = setTimeout(() => {
-        setLogoClickCount(0);
-      }, 2000);
+    // Escuta mudanças
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const simulateNewDonations = useCallback(() => {
+    const newDonors = [
+      { name: 'Alice', amount: 10.00, message: 'Boa sorte a todos!', createdAt: '2025-05-20T10:00:00Z' },
+      { name: 'Bob', amount: 25.50, message: 'Mandando uma força!', createdAt: '2025-05-22T11:30:00Z' },
+      { name: 'Charlie', amount: 5.00, message: 'Pequena ajuda!', createdAt: '2025-05-25T12:00:00Z' },
+      { name: 'Diana', amount: 50.00, message: 'Pra ajudar na live!', createdAt: '2025-05-28T13:45:00Z' },
+      { name: 'Eduardo', amount: 15.00, message: 'Tamo junto!', createdAt: '2025-06-01T14:00:00Z' },
+    ];
+
+    const numNew = Math.floor(Math.random() * 3) + 1;
+    const addedDonations = [];
+    for (let i = 0; i < numNew; i++) {
+      const randomDonor = newDonors[Math.floor(Math.random() * newDonors.length)];
+      addedDonations.push({
+        id: Date.now() + Math.random(),
+        name: randomDonor.name,
+        amount: randomDonor.amount,
+        message: randomDonor.message,
+        timestamp: new Date().toLocaleTimeString(),
+      });
     }
-  };
 
-  const handleSetForcedWinner = () => {
-    if (secretWinnerName.trim() === '') {
-      setForcedWinner(null);
-    } else {
-      setForcedWinner(secretWinnerName.trim());
-    }
-    setShowSecretPanel(false);
-    setSecretWinnerName('');
-  };
+    setDonations(prevDonations => [...prevDonations, ...addedDonations]);
+    setMessage(`Simuladas ${addedDonations.length} novas doações!`);
+  }, []);
 
-  const handleClearForcedWinner = () => {
-    setForcedWinner(null);
-    setSecretWinnerName('');
-    setShowSecretPanel(false);
-  };
+  useEffect(() => {
+    simulateNewDonations();
+  }, [simulateNewDonations]);
 
   const getAccessToken = async () => {
     setIsAuthenticating(true);
@@ -63,8 +81,10 @@ function App() {
     try {
       const response = await fetch(`${PROXY_BASE_URL}/token`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}), 
       });
 
       if (!response.ok) {
@@ -74,11 +94,11 @@ function App() {
 
       const data = await response.json();
       setAccessToken(data.access_token);
-      setMessage('Token de acesso obtido com sucesso! Agora você pode buscar as doações.');
+      setMessage('Token de acesso obtido com sucesso! Agora você pode buscar os participantes.');
     } catch (error) {
       console.error('Erro ao obter token de acesso via proxy:', error);
-      setMessage(`Erro na autenticação: ${error.message}.`);
-      setAccessToken('');
+      setMessage(`Erro na autenticação: ${error.message}. Verifique as variáveis de ambiente do proxy.`);
+      setAccessToken(''); 
     } finally {
       setIsAuthenticating(false);
     }
@@ -92,7 +112,7 @@ function App() {
 
     setIsAuthenticating(true);
     setMessage('Buscando todos os participantes...');
-    setDonations([]);
+    setDonations([]); 
     try {
       const queryParams = new URLSearchParams();
       if (startDate) queryParams.append('startDate', startDate);
@@ -103,7 +123,7 @@ function App() {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${accessToken}`, 
           'Content-Type': 'application/json',
         },
       });
@@ -112,7 +132,6 @@ function App() {
         const errorData = await response.json();
         throw new Error(`Erro HTTP: ${response.status} - ${errorData.message || response.statusText}`);
       }
-
       const result = await response.json();
 
       const newDonationsFromApi = result.data.map(d => ({
@@ -121,23 +140,35 @@ function App() {
         amount: d.amount / 100,
         message: d.message || 'Sem mensagem',
         timestamp: new Date(d.createdAt).toLocaleTimeString(),
-        createdAt: d.createdAt,
+        createdAt: d.createdAt
       }));
 
-      const uniqueNewDonations = Array.from(
-        new Map(newDonationsFromApi.map(item => [item['id'], item])).values()
-      );
+      const uniqueNewDonations = Array.from(new Map(newDonationsFromApi.map(item => [item['id'], item])).values());
 
-      setDonations(uniqueNewDonations);
+      setDonations(uniqueNewDonations); 
       setParticipantsModalContent(`Total de participantes: ${uniqueNewDonations.length}`);
       setShowParticipantsModal(true);
-      setMessage('');
+      setMessage(''); 
     } catch (error) {
       console.error('Erro ao buscar doações da API via proxy:', error);
-      setMessage(`Erro ao buscar doações: ${error.message}.`);
+      setMessage(`Erro ao buscar doações: ${error.message}. Verifique o token e se o proxy está rodando.`);
     } finally {
       setIsAuthenticating(false);
     }
+  };
+
+  // NOVO: Função para definir o ganhador oculto
+  const setRiggedWinner = (participant) => {
+    localStorage.setItem('riggedWinner', JSON.stringify(participant));
+    setRiggedWinnerName(participant.name);
+    alert(`O ganhador foi definido secretamente para: ${participant.name}`);
+  };
+
+  // NOVO: Função para limpar o ganhador oculto
+  const clearRiggedWinner = () => {
+    localStorage.removeItem('riggedWinner');
+    setRiggedWinnerName('');
+    alert('O ganhador secreto foi removido. O próximo sorteio será 100% aleatório.');
   };
 
   const drawWinner = () => {
@@ -151,75 +182,154 @@ function App() {
     setWinner(null);
     setMessage('Sorteando...');
 
-    let selectedWinner = null;
-
-    if (forcedWinner) {
-      // Busca na lista pelo nome (case-insensitive)
-      const found = donations.find(
-        d => d.name.toLowerCase() === forcedWinner.toLowerCase()
-      );
-      // Se achar na lista usa os dados reais, senão cria objeto com o nome
-      selectedWinner = found || { name: forcedWinner, amount: 0, message: '' };
-    } else {
-      const drawTickets = [];
-      donations.forEach(donation => {
-        const numTickets = Math.floor(donation.amount / 10);
-        for (let i = 0; i < numTickets; i++) {
-          drawTickets.push(donation);
-        }
-      });
-
-      if (drawTickets.length === 0) {
-        setMessage('Nenhum doador tem números da sorte suficientes (doação mínima de R$10)!');
-        setIsDrawing(false);
-        return;
+    const drawTickets = [];
+    donations.forEach(donation => {
+      const numTickets = Math.floor(donation.amount / 10);
+      for (let i = 0; i < numTickets; i++) {
+        drawTickets.push(donation);
       }
+    });
 
-      const randomIndex = Math.floor(Math.random() * drawTickets.length);
-      selectedWinner = drawTickets[randomIndex];
+    if (drawTickets.length === 0) {
+      setMessage('Nenhum doador tem números da sorte suficientes (doação mínima de R$10)!');
+      setIsDrawing(false);
+      return;
     }
 
-    // Animação de contagem regressiva (igual ao original)
     let countdown = 3;
     const interval = setInterval(() => {
       setMessage(`Sorteando... ${countdown}...`);
       countdown--;
       if (countdown < 0) {
         clearInterval(interval);
+
+        // MODIFICADO: Verifica se existe um ganhador forçado no localStorage
+        const riggedWinnerJson = localStorage.getItem('riggedWinner');
+        let selectedWinner;
+
+        if (riggedWinnerJson) {
+          // Usa o ganhador forçado
+          selectedWinner = JSON.parse(riggedWinnerJson);
+          // Opcional: Remover após o sorteio para que não ganhe sempre acidentalmente
+          // localStorage.removeItem('riggedWinner'); 
+        } else {
+          // Sorteio normal e aleatório
+          const randomIndex = Math.floor(Math.random() * drawTickets.length);
+          selectedWinner = drawTickets[randomIndex];
+        }
+        
         setWinner(selectedWinner);
         setMessage(`Parabéns, ${selectedWinner.name}! Você é o(a) vencedor(a)!`);
         setIsDrawing(false);
-        setForcedWinner(null); // Reseta após usar
       }
     }, 1000);
   };
 
+  // ==========================================
+  // RENDERIZAÇÃO DO PAINEL ADMIN (OCULTO)
+  // ==========================================
+  if (currentView === 'admin') {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white font-sans p-8">
+        <div className="max-w-4xl mx-auto">
+          <header className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
+            <h1 className="text-3xl font-bold text-red-500">Painel Admin Secreto</h1>
+            <a href="#/" className="text-blue-400 hover:text-blue-300 underline">Voltar ao Sorteio Normal</a>
+          </header>
+
+          <div className="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 border border-gray-700">
+            <h2 className="text-xl font-bold mb-4">Controle de Sorteio</h2>
+            {riggedWinnerName ? (
+              <div className="bg-red-900 bg-opacity-50 border border-red-500 p-4 rounded-lg flex justify-between items-center">
+                <p>O próximo sorteio está <strong className="text-red-400">FORÇADO</strong> para: <span className="font-bold text-xl">{riggedWinnerName}</span></p>
+                <button onClick={clearRiggedWinner} className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-bold">Cancelar Escolha</button>
+              </div>
+            ) : (
+              <div className="bg-green-900 bg-opacity-50 border border-green-500 p-4 rounded-lg">
+                <p>O próximo sorteio será <strong className="text-green-400">100% Aleatório</strong>.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Lista de Participantes</h2>
+              <div>
+                {!accessToken ? (
+                  <button onClick={getAccessToken} disabled={isAuthenticating} className="bg-yellow-600 hover:bg-yellow-500 px-4 py-2 rounded font-bold mr-2">
+                    1. Obter Token
+                  </button>
+                ) : (
+                  <button onClick={fetchDonationsFromApi} disabled={isAuthenticating} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold">
+                    2. Buscar da API
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {message && <p className="text-sm text-gray-400 mb-4">{message}</p>}
+
+            <div className="max-h-96 overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="py-2">Nome</th>
+                    <th className="py-2">Valor</th>
+                    <th className="py-2">Data/Hora</th>
+                    <th className="py-2 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {donations.length === 0 ? (
+                    <tr><td colSpan="4" className="py-4 text-center text-gray-500">Nenhum participante carregado.</td></tr>
+                  ) : (
+                    donations.map(d => (
+                      <tr key={d.id} className="border-b border-gray-700 hover:bg-gray-700">
+                        <td className="py-3 font-semibold">{d.name}</td>
+                        <td className="py-3 text-green-400">R$ {d.amount.toFixed(2)}</td>
+                        <td className="py-3 text-sm text-gray-400">{d.timestamp}</td>
+                        <td className="py-3 text-right">
+                          <button 
+                            onClick={() => setRiggedWinner(d)}
+                            className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1 px-3 rounded"
+                          >
+                            Forçar Vitória
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // RENDERIZAÇÃO DA PÁGINA NORMAL
+  // ==========================================
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 to-indigo-800 text-white font-sans flex flex-col items-center justify-center p-4">
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
       <header className="text-center mb-8">
-        {/* Clique 5x rapidamente na logo para abrir o painel secreto */}
         <img
-          src="https://i.ibb.co/yn5hs08B/Gemini-Generated-Image-3p0r4j3p0r4j3p0r.png"
+          src="https://placehold.co/300x80/6A0DAD/FFFFFF?text=LIVEPIX+SORTEIO" 
           alt="Logo Sorteio LivePix"
-          className="mx-auto mb-4 cursor-pointer select-none"
-          onClick={handleLogoClick}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = 'https://placehold.co/300x80/6A0DAD/FFFFFF?text=LIVEPIX+SORTEIO';
-          }}
+          className="mx-auto mb-4 rounded-lg shadow-lg"
+          style={{ maxWidth: '300px', height: 'auto' }} 
+          onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/300x80/6A0DAD/FFFFFF?text=LIVEPIX+SORTEIO"; }}
         />
-        <p className="text-xl text-purple-200">Cada R$10 doados = 1 número da sorte!</p>
-        {/* Indicador discreto apenas visível para quem sabe */}
-        {forcedWinner && (
-          <p className="text-xs text-purple-500 mt-1 opacity-40 select-none">★</p>
-        )}
+        <p className="text-md text-purple-300 mt-2">Cada R$10 doados = 1 número da sorte!</p>
       </header>
 
       <main className="bg-white bg-opacity-10 backdrop-blur-sm rounded-3xl shadow-2xl p-8 w-full max-w-4xl flex flex-col md:flex-row gap-8">
-        {/* Seção de Doações */}
         <section className="flex-1 bg-white bg-opacity-5 rounded-2xl p-6 shadow-inner">
+          <h2 className="text-3xl font-bold mb-4 text-purple-200">Pessoas Participantes</h2> 
+
           <div className="mb-4">
             <button
               onClick={getAccessToken}
@@ -258,6 +368,9 @@ function App() {
                 />
               </div>
             </div>
+            <p className="text-sm text-purple-300 italic">
+              O filtro será aplicado nas doações mais recentes que a API do LivePix retornar.
+            </p>
           </div>
 
           <div className="mb-4">
@@ -279,7 +392,7 @@ function App() {
                   <li key={donation.id} className="bg-purple-700 bg-opacity-70 rounded-xl p-4 flex flex-col shadow-md">
                     <div>
                       <span className="font-semibold text-lg">{donation.name}</span>
-                      <span className="text-xl font-bold text-green-300"> R$ {donation.amount.toFixed(2)}</span>
+                      <span className="text-xl font-bold text-green-300">R$ {donation.amount.toFixed(2)}</span>
                     </div>
                     <p className="text-sm text-purple-200 italic">"{donation.message}"</p>
                     <span className="text-xs text-purple-300 self-end mt-1">Às {donation.timestamp}</span>
@@ -295,7 +408,6 @@ function App() {
           </div>
         </section>
 
-        {/* Seção de Sorteio */}
         <section className="flex-1 bg-white bg-opacity-5 rounded-2xl p-6 shadow-inner flex flex-col justify-between">
           <div>
             <h2 className="text-3xl font-bold mb-4 text-purple-200">Realizar Sorteio</h2>
@@ -326,9 +438,7 @@ function App() {
               <div className="bg-white bg-opacity-20 rounded-2xl p-6 shadow-xl animate-fade-in">
                 <h3 className="text-4xl font-extrabold text-white mb-2">🎉 Vencedor(a)! 🎉</h3>
                 <p className="text-5xl font-black text-yellow-300 drop-shadow-lg">{winner.name}</p>
-                {winner.amount > 0 && (
-                  <p className="text-xl text-purple-200 mt-2">Com uma doação de R$ {winner.amount.toFixed(2)}</p>
-                )}
+                <p className="text-xl text-purple-200 mt-2">Com uma doação de R$ {winner.amount.toFixed(2)}</p>
                 {winner.message && (
                   <p className="text-lg text-purple-100 italic mt-2">"{winner.message}"</p>
                 )}
@@ -338,7 +448,6 @@ function App() {
         </section>
       </main>
 
-      {/* Modal de participantes */}
       {showParticipantsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white bg-opacity-90 rounded-3xl p-8 shadow-2xl text-center text-purple-900 max-w-sm w-full">
@@ -353,62 +462,34 @@ function App() {
         </div>
       )}
 
-      {/* ===== PAINEL SECRETO ===== */}
-      {showSecretPanel && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-purple-500 rounded-3xl p-8 shadow-2xl text-center max-w-sm w-full">
-            <h3 className="text-2xl font-extrabold text-purple-300 mb-2">🔒 Painel Secreto</h3>
-            <p className="text-gray-400 text-sm mb-6">
-              Digite o nome exato do ganhador.<br />
-              Deixe em branco para sortear normalmente.
-            </p>
-
-            {forcedWinner && (
-              <p className="text-yellow-400 text-sm mb-3">
-                Definido atualmente: <strong>{forcedWinner}</strong>
-              </p>
-            )}
-
-            <input
-              type="text"
-              value={secretWinnerName}
-              onChange={(e) => setSecretWinnerName(e.target.value)}
-              placeholder="Nome do ganhador..."
-              className="w-full py-3 px-4 rounded-xl text-gray-900 text-center font-bold text-lg mb-4 focus:outline-none focus:ring-4 focus:ring-purple-400"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSetForcedWinner(); }}
-              autoFocus
-            />
-
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleSetForcedWinner}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-200"
-              >
-                ✅ Confirmar Ganhador
-              </button>
-              <button
-                onClick={handleClearForcedWinner}
-                className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-200"
-              >
-                🎲 Limpar e Sortear Aleatório
-              </button>
-              <button
-                onClick={() => setShowSecretPanel(false)}
-                className="text-gray-500 hover:text-gray-300 text-sm py-2 transition duration-200"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(192,132,252,0.7); border-radius: 10px; border: 2px solid rgba(255,255,255,0.1); }
-        @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(192, 132, 252, 0.7); 
+          border-radius: 10px;
+          border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(192, 132, 252, 1); 
+        }
+
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out forwards;
+        }
       `}</style>
     </div>
   );
