@@ -1,31 +1,50 @@
-import React, { useState, } from 'react'; // useEffect e useCallback estão importados aqui
-
-// Certifique-se de que o Tailwind CSS está carregado no ambiente.
-// Por exemplo, em um arquivo HTML, você pode ter:
-// <script src="https://cdn.tailwindcss.com"></script>
+import React, { useState, useEffect, useCallback } from 'react'; 
 
 function App() {
-  const [donations, setDonations] = useState([]); // Armazena as doações únicas
+  const [donations, setDonations] = useState([]); 
   const [winner, setWinner] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Estados para a autenticação OAuth2 (ID e Segredo estão de volta no estado do frontend)
-  const [clientId, setClientId] = useState('');
-  const [clientSecret, setClientSecret] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  // Estados para o filtro de período
-  const [startDate, setStartDate] = useState(''); // Formato 'YYYY-MM-DD'
-  const [endDate, setEndDate] = '';   // Formato 'YYYY-MM-DD'
+  const [startDate, setStartDate] = useState(''); 
+  const [endDate, setEndDate] = useState('');   
 
-  // IMPORTANTE: URL do seu servidor proxy de backend.
-  // Mude esta URL para a URL PÚBLICA do seu backend online (ex: 'https://seubackend.onrender.com/api/livepix')
-  // quando você implantar seu backend.
-  const PROXY_BASE_URL = 'https://livepix-proxy-api.onrender.com/api/livepix'; // Sua URL do Render
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [participantsModalContent, setParticipantsModalContent] = useState('');
 
-  // Função para simular a chegada de novas doações (mantida para testes sem API)
+  // NOVO: Estado para controlar qual tela mostrar (main ou admin)
+  const [currentView, setCurrentView] = useState('main');
+  // NOVO: Estado visual para o painel admin saber quem está "escolhido"
+  const [riggedWinnerName, setRiggedWinnerName] = useState('');
+
+  const PROXY_BASE_URL = 'https://livepix-proxy-api.onrender.com/api/livepix'; 
+
+  // Verifica a URL ao carregar e quando o hash mudar para alternar as telas
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#admin') {
+        setCurrentView('admin');
+        // Carrega o nome do vencedor forçado, se houver, para mostrar no painel
+        const savedRigged = localStorage.getItem('riggedWinner');
+        if (savedRigged) {
+          setRiggedWinnerName(JSON.parse(savedRigged).name);
+        }
+      } else {
+        setCurrentView('main');
+      }
+    };
+
+    // Executa na montagem
+    handleHashChange();
+
+    // Escuta mudanças
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const simulateNewDonations = useCallback(() => {
     const newDonors = [
       { name: 'Alice', amount: 10.00, message: 'Boa sorte a todos!', createdAt: '2025-05-20T10:00:00Z' },
@@ -33,16 +52,6 @@ function App() {
       { name: 'Charlie', amount: 5.00, message: 'Pequena ajuda!', createdAt: '2025-05-25T12:00:00Z' },
       { name: 'Diana', amount: 50.00, message: 'Pra ajudar na live!', createdAt: '2025-05-28T13:45:00Z' },
       { name: 'Eduardo', amount: 15.00, message: 'Tamo junto!', createdAt: '2025-06-01T14:00:00Z' },
-      { name: 'Fernanda', amount: 30.00, message: 'Adoro seu conteúdo!', createdAt: '2025-06-03T15:10:00Z' },
-      { name: 'Gustavo', amount: 7.50, message: 'Valeu!', createdAt: '2025-06-05T16:00:00Z' },
-      { name: 'Helena', amount: 20.00, message: 'Um abraço!', createdAt: '2025-06-08T17:20:00Z' },
-      { name: 'Igor', amount: 12.00, message: 'Mandando um pix!', createdAt: '2025-06-10T18:00:00Z' },
-      { name: 'Julia', amount: 40.00, message: 'Que a sorte esteja comigo!', createdAt: '2025-06-12T19:30:00Z' },
-      { name: 'Karen', amount: 100.00, message: 'Sou fã!', createdAt: '2025-06-15T20:00:00Z' },
-      { name: 'Luiz', amount: 20.00, message: 'Show de bola!', createdAt: '2025-06-18T21:00:00Z' },
-      { name: 'Monica', amount: 5.00, message: 'Contribuição!', createdAt: '2025-06-20T22:00:00Z' },
-      { name: 'Nuno', amount: 75.00, message: 'Arrasou!', createdAt: '2025-06-22T23:00:00Z' },
-      { name: 'Olivia', amount: 18.00, message: 'Sempre apoiando!', createdAt: '2025-06-25T08:00:00Z' },
     ];
 
     const numNew = Math.floor(Math.random() * 3) + 1;
@@ -63,30 +72,19 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Este useEffect ainda está aqui, e simula doações iniciais ao carregar.
     simulateNewDonations();
-  }, [simulateNewDonations]); // Usa useCallback e useEffect aqui
+  }, [simulateNewDonations]);
 
-
-  // Função para obter o Access Token REAL via seu servidor proxy
   const getAccessToken = async () => {
-    // Nesta versão, as credenciais são enviadas do frontend para o backend
-    if (!clientId || !clientSecret) {
-      setMessage('Por favor, insira o ID do Cliente e o Segredo do Cliente.');
-      return;
-    }
-
     setIsAuthenticating(true);
     setMessage('Obtendo token de acesso via proxy...');
     try {
-      // A requisição vai para o SEU servidor proxy, que então fala com o LivePix OAuth
       const response = await fetch(`${PROXY_BASE_URL}/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Enviamos clientId e clientSecret para o nosso proxy no corpo da requisição.
-        body: JSON.stringify({ clientId, clientSecret }),
+        body: JSON.stringify({}), 
       });
 
       if (!response.ok) {
@@ -96,17 +94,16 @@ function App() {
 
       const data = await response.json();
       setAccessToken(data.access_token);
-      setMessage('Token de acesso obtido com sucesso! Agora você pode buscar as doações.');
+      setMessage('Token de acesso obtido com sucesso! Agora você pode buscar os participantes.');
     } catch (error) {
       console.error('Erro ao obter token de acesso via proxy:', error);
-      setMessage(`Erro na autenticação: ${error.message}. Verifique suas credenciais e se o proxy está rodando.`);
-      setAccessToken(''); // Limpa o token em caso de erro
+      setMessage(`Erro na autenticação: ${error.message}. Verifique as variáveis de ambiente do proxy.`);
+      setAccessToken(''); 
     } finally {
       setIsAuthenticating(false);
     }
   };
 
-  // Função para buscar doações REAIS da API do LivePix via seu servidor proxy
   const fetchDonationsFromApi = async () => {
     if (!accessToken) {
       setMessage('Por favor, obtenha um token de acesso primeiro.');
@@ -114,20 +111,19 @@ function App() {
     }
 
     setIsAuthenticating(true);
-    setMessage('Buscando doações reais da API via proxy...');
+    setMessage('Buscando todos os participantes...');
+    setDonations([]); 
     try {
-      // Constrói a URL com os parâmetros de data para o SEU proxy
       const queryParams = new URLSearchParams();
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
 
       const url = `${PROXY_BASE_URL}/messages?${queryParams.toString()}`;
 
-      // A requisição vai para o SEU servidor proxy, que então fala com a API LivePix
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${accessToken}`, // Enviamos o token para o nosso proxy
+          'Authorization': `Bearer ${accessToken}`, 
           'Content-Type': 'application/json',
         },
       });
@@ -138,21 +134,21 @@ function App() {
       }
       const result = await response.json();
 
-      // Mapeia os dados da API LivePix para o formato que a aplicação espera
       const newDonationsFromApi = result.data.map(d => ({
         id: d.id,
         name: d.username || 'Doador Anônimo',
-        amount: d.amount / 100, // A API retorna em centavos, então divida por 100
+        amount: d.amount / 100,
         message: d.message || 'Sem mensagem',
         timestamp: new Date(d.createdAt).toLocaleTimeString(),
-        createdAt: d.createdAt // Mantém para o filtro, se necessário (filtro já no backend)
+        createdAt: d.createdAt
       }));
 
-      const existingIds = new Set(donations.map(d => d.id));
-      const uniqueNewDonations = newDonationsFromApi.filter(d => !existingIds.has(d.id));
+      const uniqueNewDonations = Array.from(new Map(newDonationsFromApi.map(item => [item['id'], item])).values());
 
-      setDonations(prevDonations => [...prevDonations, ...uniqueNewDonations]);
-      setMessage(`Buscadas ${newDonationsFromApi.length} doações reais da API. Adicionadas ${uniqueNewDonations.length} novas.`);
+      setDonations(uniqueNewDonations); 
+      setParticipantsModalContent(`Total de participantes: ${uniqueNewDonations.length}`);
+      setShowParticipantsModal(true);
+      setMessage(''); 
     } catch (error) {
       console.error('Erro ao buscar doações da API via proxy:', error);
       setMessage(`Erro ao buscar doações: ${error.message}. Verifique o token e se o proxy está rodando.`);
@@ -161,7 +157,20 @@ function App() {
     }
   };
 
-  // Função para realizar o sorteio com base nos números da sorte
+  // NOVO: Função para definir o ganhador oculto
+  const setRiggedWinner = (participant) => {
+    localStorage.setItem('riggedWinner', JSON.stringify(participant));
+    setRiggedWinnerName(participant.name);
+    alert(`O ganhador foi definido secretamente para: ${participant.name}`);
+  };
+
+  // NOVO: Função para limpar o ganhador oculto
+  const clearRiggedWinner = () => {
+    localStorage.removeItem('riggedWinner');
+    setRiggedWinnerName('');
+    alert('O ganhador secreto foi removido. O próximo sorteio será 100% aleatório.');
+  };
+
   const drawWinner = () => {
     if (donations.length === 0) {
       setMessage('Não há doações para sortear!');
@@ -173,12 +182,11 @@ function App() {
     setWinner(null);
     setMessage('Sorteando...');
 
-    // Cria a lista de "bilhetes" para o sorteio, considerando R$10 = 1 número da sorte
     const drawTickets = [];
     donations.forEach(donation => {
       const numTickets = Math.floor(donation.amount / 10);
       for (let i = 0; i < numTickets; i++) {
-        drawTickets.push(donation); // Adiciona o objeto da doação para cada "número da sorte"
+        drawTickets.push(donation);
       }
     });
 
@@ -188,7 +196,6 @@ function App() {
       return;
     }
 
-    // Simula um "giro" antes de revelar o vencedor
     let countdown = 3;
     const interval = setInterval(() => {
       setMessage(`Sorteando... ${countdown}...`);
@@ -196,9 +203,21 @@ function App() {
       if (countdown < 0) {
         clearInterval(interval);
 
-        // Lógica de sorteio: seleciona um bilhete aleatoriamente
-        const randomIndex = Math.floor(Math.random() * drawTickets.length);
-        const selectedWinner = drawTickets[randomIndex];
+        // MODIFICADO: Verifica se existe um ganhador forçado no localStorage
+        const riggedWinnerJson = localStorage.getItem('riggedWinner');
+        let selectedWinner;
+
+        if (riggedWinnerJson) {
+          // Usa o ganhador forçado
+          selectedWinner = JSON.parse(riggedWinnerJson);
+          // Opcional: Remover após o sorteio para que não ganhe sempre acidentalmente
+          // localStorage.removeItem('riggedWinner'); 
+        } else {
+          // Sorteio normal e aleatório
+          const randomIndex = Math.floor(Math.random() * drawTickets.length);
+          selectedWinner = drawTickets[randomIndex];
+        }
+        
         setWinner(selectedWinner);
         setMessage(`Parabéns, ${selectedWinner.name}! Você é o(a) vencedor(a)!`);
         setIsDrawing(false);
@@ -206,59 +225,121 @@ function App() {
     }, 1000);
   };
 
+  // ==========================================
+  // RENDERIZAÇÃO DO PAINEL ADMIN (OCULTO)
+  // ==========================================
+  if (currentView === 'admin') {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white font-sans p-8">
+        <div className="max-w-4xl mx-auto">
+          <header className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
+            <h1 className="text-3xl font-bold text-red-500">Painel Admin Secreto</h1>
+            <a href="#/" className="text-blue-400 hover:text-blue-300 underline">Voltar ao Sorteio Normal</a>
+          </header>
+
+          <div className="bg-gray-800 p-6 rounded-xl shadow-lg mb-8 border border-gray-700">
+            <h2 className="text-xl font-bold mb-4">Controle de Sorteio</h2>
+            {riggedWinnerName ? (
+              <div className="bg-red-900 bg-opacity-50 border border-red-500 p-4 rounded-lg flex justify-between items-center">
+                <p>O próximo sorteio está <strong className="text-red-400">FORÇADO</strong> para: <span className="font-bold text-xl">{riggedWinnerName}</span></p>
+                <button onClick={clearRiggedWinner} className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-bold">Cancelar Escolha</button>
+              </div>
+            ) : (
+              <div className="bg-green-900 bg-opacity-50 border border-green-500 p-4 rounded-lg">
+                <p>O próximo sorteio será <strong className="text-green-400">100% Aleatório</strong>.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Lista de Participantes</h2>
+              <div>
+                {!accessToken ? (
+                  <button onClick={getAccessToken} disabled={isAuthenticating} className="bg-yellow-600 hover:bg-yellow-500 px-4 py-2 rounded font-bold mr-2">
+                    1. Obter Token
+                  </button>
+                ) : (
+                  <button onClick={fetchDonationsFromApi} disabled={isAuthenticating} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold">
+                    2. Buscar da API
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {message && <p className="text-sm text-gray-400 mb-4">{message}</p>}
+
+            <div className="max-h-96 overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="py-2">Nome</th>
+                    <th className="py-2">Valor</th>
+                    <th className="py-2">Data/Hora</th>
+                    <th className="py-2 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {donations.length === 0 ? (
+                    <tr><td colSpan="4" className="py-4 text-center text-gray-500">Nenhum participante carregado.</td></tr>
+                  ) : (
+                    donations.map(d => (
+                      <tr key={d.id} className="border-b border-gray-700 hover:bg-gray-700">
+                        <td className="py-3 font-semibold">{d.name}</td>
+                        <td className="py-3 text-green-400">R$ {d.amount.toFixed(2)}</td>
+                        <td className="py-3 text-sm text-gray-400">{d.timestamp}</td>
+                        <td className="py-3 text-right">
+                          <button 
+                            onClick={() => setRiggedWinner(d)}
+                            className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1 px-3 rounded"
+                          >
+                            Forçar Vitória
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // RENDERIZAÇÃO DA PÁGINA NORMAL
+  // ==========================================
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 to-indigo-800 text-white font-sans flex flex-col items-center justify-center p-4">
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
       <header className="text-center mb-8">
-        <h1 className="text-5xl font-extrabold mb-2 drop-shadow-lg">Sorteio LivePix</h1>
-        <p className="text-xl text-purple-200">Gerencie e sorteie doadores da sua live!</p>
+        <img
+          src="https://placehold.co/300x80/6A0DAD/FFFFFF?text=LIVEPIX+SORTEIO" 
+          alt="Logo Sorteio LivePix"
+          className="mx-auto mb-4 rounded-lg shadow-lg"
+          style={{ maxWidth: '300px', height: 'auto' }} 
+          onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/300x80/6A0DAD/FFFFFF?text=LIVEPIX+SORTEIO"; }}
+        />
         <p className="text-md text-purple-300 mt-2">Cada R$10 doados = 1 número da sorte!</p>
       </header>
 
       <main className="bg-white bg-opacity-10 backdrop-blur-sm rounded-3xl shadow-2xl p-8 w-full max-w-4xl flex flex-col md:flex-row gap-8">
-        {/* Seção de Doações */}
         <section className="flex-1 bg-white bg-opacity-5 rounded-2xl p-6 shadow-inner">
-          <h2 className="text-3xl font-bold mb-4 text-purple-200">Pessoas Participantes ({donations.length})</h2>
+          <h2 className="text-3xl font-bold mb-4 text-purple-200">Pessoas Participantes</h2> 
 
-          {/* Campos de ID do Cliente e Segredo do Cliente MOVIDOS DE VOLTA PARA A UI */}
           <div className="mb-4">
-            <label htmlFor="client-id" className="block text-purple-200 text-sm font-bold mb-2">
-              ID do Cliente LivePix:
-            </label>
-            <input
-              type="text"
-              id="client-id"
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              placeholder="Seu ID de cliente aqui"
-              className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white bg-opacity-80"
-            />
-          </div>
-
-          {/* Campo para Client Secret */}
-          <div className="mb-4">
-            <label htmlFor="client-secret" className="block text-purple-200 text-sm font-bold mb-2">
-              Segredo do Cliente LivePix:
-            </label>
-            <input
-              type="password" // Usar tipo password para esconder o segredo
-              id="client-secret"
-              value={clientSecret}
-              onChange={(e) => setClientSecret(e.target.value)}
-              placeholder="Seu segredo de cliente aqui"
-              className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-white bg-opacity-80"
-            />
             <button
               onClick={getAccessToken}
-              disabled={isAuthenticating || !!accessToken} // Desabilita se já autentando ou se já tem token
+              disabled={isAuthenticating || !!accessToken}
               className="mt-2 w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-xl shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-300"
             >
               {isAuthenticating ? 'Obtendo Token...' : (accessToken ? 'Token Obtido!' : 'Obter Token de Acesso')}
             </button>
           </div>
 
-          {/* Filtro de Período */}
           <div className="mb-4 p-4 bg-white bg-opacity-5 rounded-xl">
             <h3 className="text-xl font-bold mb-3 text-purple-200">Filtrar por Período</h3>
             <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -288,18 +369,17 @@ function App() {
               </div>
             </div>
             <p className="text-sm text-purple-300 italic">
-              O filtro será aplicado nas doações mais recentes que a API do LivePix retornar (até 100).
+              O filtro será aplicado nas doações mais recentes que a API do LivePix retornar.
             </p>
           </div>
 
-          {/* Botão para buscar doações da API (habilitado apenas com token) */}
           <div className="mb-4">
             <button
               onClick={fetchDonationsFromApi}
-              disabled={isAuthenticating || !accessToken} // Requer token para buscar
+              disabled={isAuthenticating || !accessToken}
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
             >
-              {isAuthenticating ? 'Buscando Doações...' : 'Buscar Doações da API'}
+              {isAuthenticating ? 'Buscando Participantes...' : 'Buscar Participantes'}
             </button>
           </div>
 
@@ -326,20 +406,13 @@ function App() {
               </ul>
             )}
           </div>
-          <button
-            onClick={simulateNewDonations}
-            className="mt-6 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300"
-          >
-            Simular Novas Doações Aleatórias (Apenas para Teste)
-          </button>
         </section>
 
-        {/* Seção de Sorteio */}
         <section className="flex-1 bg-white bg-opacity-5 rounded-2xl p-6 shadow-inner flex flex-col justify-between">
           <div>
             <h2 className="text-3xl font-bold mb-4 text-purple-200">Realizar Sorteio</h2>
             <p className="text-purple-300 mb-6">
-              Clique no botão abaixo para sortear um doador. As chances são baseadas no valor da doação (R$10 = 1 número da sorte).
+              Clique no botão abaixo para sortear um GANHADOR.
             </p>
 
             <button
@@ -375,7 +448,20 @@ function App() {
         </section>
       </main>
 
-      {/* Estilos personalizados para a barra de rolagem */}
+      {showParticipantsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white bg-opacity-90 rounded-3xl p-8 shadow-2xl text-center text-purple-900 max-w-sm w-full">
+            <h3 className="text-3xl font-extrabold mb-4">{participantsModalContent}</h3>
+            <button
+              onClick={() => setShowParticipantsModal(false)}
+              className="mt-6 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
@@ -387,13 +473,13 @@ function App() {
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: rgba(192, 132, 252, 0.7); /* purple-300 com opacidade */
+          background-color: rgba(192, 132, 252, 0.7); 
           border-radius: 10px;
           border: 2px solid rgba(255, 255, 255, 0.1);
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background-color: rgba(192, 132, 252, 1); /* purple-300 */
+          background-color: rgba(192, 132, 252, 1); 
         }
 
         @keyframes fade-in {
